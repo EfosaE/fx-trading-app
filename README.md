@@ -932,3 +932,7 @@ Two triggers:
 - **Redis** is the performance layer — rates are served in < 5ms, and the external API is called at most once per TTL window regardless of how many users trade simultaneously.
 - **PostgreSQL** is the audit layer — every `TRANSACTION` row carries an `fx_rate_id` FK, so the exact rate applied to any trade is permanently queryable. Redis can be wiped and rebuilt; the DB cannot.
 - **Fallback:** If the external API is down, `FxService` queries the most recent row in `fx_rate` for that pair and uses it rather than failing the user's trade.
+
+
+
+⚠️ Important: TypeORM returns decimal columns as strings. Always use a library like decimal.js for arithmetic to avoid floating-point errors.

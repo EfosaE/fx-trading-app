@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fx-trade-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fxtrade
+      POSTGRES_PASSWORD: fxtradepassword
+      POSTGRES_DB: fxtrade
+    ports:
+      - "5433:5432"
+    volumes:
+      - fx_trade_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fxtrade"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fx-trade-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: fx-trade-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6388:6379"
+    volumes:
+      - fx_trade_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fx-trade-network
+
+volumes:
+  fx_trade_postgres_data:
+  fx_trade_redis_data:
+
+networks:
+  fx-trade-network:
+    driver: bridge
