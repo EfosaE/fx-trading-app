@@ -20,7 +20,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'password_hash', select: false })
   passwordHash: string;
 
   @Column({ name: 'otp_code', type: 'varchar', nullable: true, default: null })

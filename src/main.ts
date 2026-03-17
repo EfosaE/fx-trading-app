@@ -32,6 +32,17 @@ async function bootstrap() {
     .setTitle('FX Trading API')
     .setDescription('Backend Documentation for FX Trading App')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

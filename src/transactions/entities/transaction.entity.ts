@@ -1,5 +1,5 @@
 import { FxRate } from 'src/fx/entities/fx-rate.entity';
-import { Currency } from 'src/common/types';
+import { Currency, TransactionStatus, TransactionType } from 'src/common/types';
 import { User } from 'src/users/entitites/user.entity';
 import { WalletBalance } from 'src/wallet/entities/wallet.entity';
 import {
@@ -10,18 +10,6 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-
-export enum TransactionType {
-  FUNDING = 'FUNDING',
-  CONVERSION = 'CONVERSION',
-  TRADE = 'TRADE',
-}
-
-export enum TransactionStatus {
-  PENDING = 'PENDING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-}
 
 @Entity('transactions')
 export class TransactionEntity {

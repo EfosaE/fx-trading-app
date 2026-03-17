@@ -20,3 +20,27 @@ export enum Currency {
   EUR = 'EUR',
   GBP = 'GBP',
 }
+
+export enum TransactionType {
+  FUNDING = 'FUNDING',
+  CONVERSION = 'CONVERSION',
+  TRADE = 'TRADE',
+}
+
+export enum TransactionStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
+
+// src/common/types/authenticated-request.interface.ts
+import { Request } from 'express';
+
+export interface AuthenticatedUser {
+  userId: string;
+  email: string;
+}
+
+export interface AuthenticatedRequest extends Request {
+  user: AuthenticatedUser;
+}

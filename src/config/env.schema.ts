@@ -22,7 +22,7 @@ export const envSchema = z.object({
   EMAIL_PORT: z.coerce.number().default(2525),
   EMAIL_USERNAME: z.string(),
   EMAIL_PASSWORD: z.string(),
-  EMAIL_FROM: z.string().email(),
+  EMAIL_FROM: z.email(),
 
   // FX (add any others your app uses)
   FX_API_KEY: z.string(),

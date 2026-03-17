@@ -8,14 +8,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/users/entitites/user.entity';
 import { WalletBalance } from 'src/wallet/entities/wallet.entity';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, WalletBalance]),
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '15m' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '7d' },
+      }),
     }),
   ],
   providers: [AuthService, JwtStrategy],
