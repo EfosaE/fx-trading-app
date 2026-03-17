@@ -23,11 +23,16 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
-  @Column({ name: 'otp_code', nullable: true })
-  otpCode: string;
+  @Column({ name: 'otp_code', type: 'varchar', nullable: true, default: null })
+  otpCode: string | null;
 
-  @Column({ name: 'otp_expiry', type: 'timestamp', nullable: true })
-  otpExpiry: Date;
+  @Column({
+    name: 'otp_expiry',
+    type: 'timestamp',
+    nullable: true,
+    default: null,
+  })
+  otpExpiry: Date | null;
 
   @Column({ name: 'is_verified', default: false })
   isVerified: boolean;

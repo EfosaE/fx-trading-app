@@ -1,5 +1,6 @@
 import { TransactionEntity } from 'src/transactions/entities/transaction.entity';
-import { Currency } from 'src/wallet/entities/wallet.entity';
+import { Currency } from 'src/common/types';
+
 import {
   Entity,
   PrimaryGeneratedColumn,

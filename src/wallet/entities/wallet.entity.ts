@@ -11,13 +11,7 @@ import {
 
 import { User } from 'src/users/entitites/user.entity';
 import { TransactionEntity } from 'src/transactions/entities/transaction.entity';
-
-export enum Currency {
-  NGN = 'NGN',
-  USD = 'USD',
-  EUR = 'EUR',
-  GBP = 'GBP',
-}
+import { Currency } from 'src/common/types';
 
 @Entity('wallet_balances')
 @Index(['userId', 'currency'], { unique: true })

@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useGlobalPipes(
     new ValidationPipe({
+      transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
     }),
@@ -24,7 +25,7 @@ async function bootstrap() {
 
   // Root redirect to Swagger docs
   app.getHttpAdapter().get('/', (req, res: Response) => {
-    res.redirect('/docs');
+    res.redirect('/api/v1/docs');
   });
 
   const swaggerConfig = new DocumentBuilder()
@@ -36,7 +37,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
 
   // Swagger UI → /docs
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('api/v1/docs', app, document);
   app.useLogger(app.get(Logger));
   await app.listen(process.env.PORT ?? 3000);
 
@@ -44,7 +45,7 @@ async function bootstrap() {
   const url = await app.getUrl();
 
   logger.log(`App running at: ${url}`);
-  logger.log(`Swagger docs at: ${url}/docs`);
+  logger.log(`Swagger docs at: ${url}/api/v1/docs`);
 }
 
 bootstrap().catch((err) => {

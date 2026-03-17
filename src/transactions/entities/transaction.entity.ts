@@ -1,6 +1,7 @@
 import { FxRate } from 'src/fx/entities/fx-rate.entity';
+import { Currency } from 'src/common/types';
 import { User } from 'src/users/entitites/user.entity';
-import { Currency, WalletBalance } from 'src/wallet/entities/wallet.entity';
+import { WalletBalance } from 'src/wallet/entities/wallet.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,

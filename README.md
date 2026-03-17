@@ -120,18 +120,21 @@ INITIAL_WALLET_CURRENCY=NGN
 ## Key Assumptions
 
 ### User & Authentication
+
 - Email and password are required for registration. Phone number is optional.
 - OTP codes are 6-digit numeric strings, valid for 10 minutes.
 - Only verified users can access wallet and trading features. Unverified users receive a `403 Forbidden` on protected routes.
 - JWT tokens are used for session management. Token expiry is configurable via `JWT_EXPIRES_IN`.
 
 ### Wallet & Balances
+
 - Each user does **not** have a single wallet with currency columns. Instead, wallet balances are modelled as separate rows in a `wallet_balance` table with a `(user_id, currency)` unique constraint. This means adding support for a new currency requires zero schema changes.
 - A user's balance for a given currency is created on first use (first fund or first conversion into that currency). Users start with no balance rows.
 - Funding is only supported in NGN by default, but the `POST /wallet/fund` endpoint accepts a `currency` parameter to support multi-currency funding in future.
 - All monetary values are stored as `DECIMAL(18, 6)` to handle precision across currencies with very different denominations (e.g. NGN vs JPY vs BTC).
 
 ### FX Rates & Trading
+
 - FX rates are fetched from the external API and cached in Redis with a configurable TTL (default: 5 minutes).
 - Every rate used in a transaction is persisted to the `fx_rate` table. This creates a permanent audit trail — each `transaction` row carries an `fx_rate_id` FK pointing to the exact rate that was applied.
 - If the external FX API is unavailable, the system falls back to the most recently stored rate in the `fx_rate` table. If no rate exists at all, the trade request returns a `503 Service Unavailable` with a clear error message.
@@ -139,6 +142,7 @@ INITIAL_WALLET_CURRENCY=NGN
 - "Convert" and "Trade" are treated as the same operation at the data level — both debit one currency balance and credit another. The `type` field on the transaction (`FUND`, `CONVERT`, `TRADE`) differentiates them in history.
 
 ### Concurrency & Safety
+
 - Wallet balance updates use database-level row locking (`SELECT ... FOR UPDATE`) inside a transaction to prevent double-spending. Two concurrent trades on the same balance will serialise correctly.
 - All balance-modifying operations are wrapped in a single atomic DB transaction: debit source balance → credit target balance → insert transaction record. If any step fails, the entire operation rolls back.
 - Transaction records are append-only. Once created, a transaction row is never updated or deleted (except for status: `PENDING` → `SUCCESS` or `FAILED`).
@@ -148,21 +152,27 @@ INITIAL_WALLET_CURRENCY=NGN
 ## Architectural Decisions
 
 ### Multi-currency wallet design
+
 Rather than adding a column per currency on the user table, wallet balances are stored as rows in a dedicated `wallet_balance` table. A composite unique index on `(user_id, currency)` enforces one balance row per currency per user. This is the standard approach in financial systems because it scales to any number of currencies without schema migrations.
 
 ### Two-layer rate caching (Redis + PostgreSQL)
+
 FX rates are served from Redis on cache hit (typically < 5ms). On cache miss, the rate is fetched from the external API, written to PostgreSQL for audit purposes, and then stored in Redis with a TTL. Redis is a performance layer — it can be wiped and rebuilt. PostgreSQL is the source of truth and can never be rebuilt from Redis.
 
 ### Atomic transactions with row-level locking
+
 Every trade operation acquires a `SELECT ... FOR UPDATE` lock on the affected `wallet_balance` rows before reading or writing balances. This prevents race conditions where two concurrent requests could both read a sufficient balance and both proceed, resulting in a negative balance.
 
 ### NestJS modular structure
+
 The application is split into four feature modules: `AuthModule`, `WalletModule`, `FxModule`, and `TransactionModule`. Each module owns its own controller, service, and repository. Cross-module communication goes through service injection, not direct repository access from other modules.
 
 ### TypeORM with repository pattern
+
 TypeORM repositories are injected into services via `@InjectRepository()`. Raw query builder is used only where atomic operations require it (e.g. locking). All entities use UUID primary keys to avoid enumerable IDs in API responses.
 
 ### Error handling
+
 - External API failures are caught and trigger the DB fallback rate strategy.
 - All inputs are validated with `class-validator` DTOs at the controller layer.
 - Insufficient balance returns `422 Unprocessable Entity` (not `400`) to distinguish a valid but unfulfilable request from a malformed one.
@@ -175,12 +185,15 @@ TypeORM repositories are injected into services via `@InjectRepository()`. Raw q
 A full Swagger UI is available at `/api/docs` when the server is running.
 
 ### Base URL
+
 ```
 http://localhost:3000
 ```
 
 ### Authentication
+
 All routes except `POST /auth/register` and `POST /auth/verify` require a Bearer token in the `Authorization` header:
+
 ```
 Authorization: Bearer <jwt_token>
 ```
@@ -190,9 +203,11 @@ Authorization: Bearer <jwt_token>
 ### Auth
 
 #### `POST /auth/register`
+
 Register a new user. Sends a 6-digit OTP to the provided email.
 
 **Request body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -201,6 +216,7 @@ Register a new user. Sends a 6-digit OTP to the provided email.
 ```
 
 **Response `201`:**
+
 ```json
 {
   "message": "Registration successful. Check your email for the OTP."
@@ -210,9 +226,11 @@ Register a new user. Sends a 6-digit OTP to the provided email.
 ---
 
 #### `POST /auth/verify`
+
 Verify OTP and activate the account. Returns a JWT token on success.
 
 **Request body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -221,6 +239,7 @@ Verify OTP and activate the account. Returns a JWT token on success.
 ```
 
 **Response `200`:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -230,9 +249,11 @@ Verify OTP and activate the account. Returns a JWT token on success.
 ---
 
 #### `POST /auth/login`
+
 Login with email and password. Returns a JWT token.
 
 **Request body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -241,6 +262,7 @@ Login with email and password. Returns a JWT token.
 ```
 
 **Response `200`:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -252,9 +274,11 @@ Login with email and password. Returns a JWT token.
 ### Wallet
 
 #### `GET /wallet`
+
 Get all currency balances for the authenticated user.
 
 **Response `200`:**
+
 ```json
 {
   "balances": [
@@ -267,9 +291,11 @@ Get all currency balances for the authenticated user.
 ---
 
 #### `POST /wallet/fund`
+
 Fund the wallet in a given currency.
 
 **Request body:**
+
 ```json
 {
   "currency": "NGN",
@@ -278,6 +304,7 @@ Fund the wallet in a given currency.
 ```
 
 **Response `201`:**
+
 ```json
 {
   "message": "Wallet funded successfully.",
@@ -289,9 +316,11 @@ Fund the wallet in a given currency.
 ---
 
 #### `POST /wallet/convert`
+
 Convert between two currencies using the real-time FX rate.
 
 **Request body:**
+
 ```json
 {
   "from_currency": "NGN",
@@ -301,6 +330,7 @@ Convert between two currencies using the real-time FX rate.
 ```
 
 **Response `201`:**
+
 ```json
 {
   "transaction_id": "uuid",
@@ -314,6 +344,7 @@ Convert between two currencies using the real-time FX rate.
 ```
 
 **Error `422`** (insufficient balance):
+
 ```json
 {
   "statusCode": 422,
@@ -324,9 +355,11 @@ Convert between two currencies using the real-time FX rate.
 ---
 
 #### `POST /wallet/trade`
+
 Trade Naira against a foreign currency or vice versa. Functionally equivalent to `/wallet/convert` but logs `type: TRADE` in transaction history.
 
 **Request body:**
+
 ```json
 {
   "from_currency": "EUR",
@@ -342,9 +375,11 @@ Trade Naira against a foreign currency or vice versa. Functionally equivalent to
 ### FX Rates
 
 #### `GET /fx/rates`
+
 Get current FX rates for all supported currency pairs (base: NGN).
 
 **Response `200`:**
+
 ```json
 {
   "base": "NGN",
@@ -363,6 +398,7 @@ Get current FX rates for all supported currency pairs (base: NGN).
 ### Transactions
 
 #### `GET /transactions`
+
 Get the authenticated user's full transaction history.
 
 **Query parameters:**
@@ -374,6 +410,7 @@ Get the authenticated user's full transaction history.
 | `status` | string | Filter by status: `SUCCESS`, `FAILED`, `PENDING` |
 
 **Response `200`:**
+
 ```json
 {
   "data": [
@@ -439,6 +476,7 @@ TRANSACTION
 ```
 
 **Relationships:**
+
 - One `USER` has many `WALLET_BALANCE` rows (one per currency held)
 - One `USER` has many `TRANSACTION` rows
 - One `WALLET_BALANCE` is referenced in many `TRANSACTION` rows
@@ -481,7 +519,7 @@ describe('WalletService', () => {
       const mockRate = { rate: 1650, id: 'rate-uuid' };
 
       walletBalanceRepo.findOne
-        .mockResolvedValueOnce(mockNgnBalance)  // source balance
+        .mockResolvedValueOnce(mockNgnBalance) // source balance
         .mockResolvedValueOnce(mockUsdBalance); // target balance
       fxService.getRate.mockResolvedValue(mockRate);
 
@@ -497,14 +535,17 @@ describe('WalletService', () => {
     });
 
     it('should throw 422 when source balance is insufficient', async () => {
-      walletBalanceRepo.findOne.mockResolvedValue({ currency: 'NGN', balance: 500 });
+      walletBalanceRepo.findOne.mockResolvedValue({
+        currency: 'NGN',
+        balance: 500,
+      });
 
       await expect(
         walletService.convertCurrency(userId, {
           from_currency: 'NGN',
           to_currency: 'USD',
           amount: 10000,
-        })
+        }),
       ).rejects.toThrow(UnprocessableEntityException);
     });
 
@@ -516,7 +557,7 @@ describe('WalletService', () => {
           from_currency: 'NGN',
           to_currency: 'USD',
           amount: 5000,
-        })
+        }),
       ).rejects.toThrow('No NGN balance found');
     });
   });
@@ -524,20 +565,32 @@ describe('WalletService', () => {
   describe('fundWallet', () => {
     it('should create a new balance row if currency not yet held', async () => {
       walletBalanceRepo.findOne.mockResolvedValue(null); // no existing row
-      walletBalanceRepo.save.mockResolvedValue({ currency: 'NGN', balance: 50000 });
+      walletBalanceRepo.save.mockResolvedValue({
+        currency: 'NGN',
+        balance: 50000,
+      });
 
-      const result = await walletService.fundWallet(userId, { currency: 'NGN', amount: 50000 });
+      const result = await walletService.fundWallet(userId, {
+        currency: 'NGN',
+        amount: 50000,
+      });
 
       expect(walletBalanceRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ currency: 'NGN', balance: 50000 })
+        expect.objectContaining({ currency: 'NGN', balance: 50000 }),
       );
       expect(result.new_balance).toBe('50000.000000');
     });
 
     it('should add to existing balance if currency row already exists', async () => {
-      walletBalanceRepo.findOne.mockResolvedValue({ currency: 'NGN', balance: 20000 });
+      walletBalanceRepo.findOne.mockResolvedValue({
+        currency: 'NGN',
+        balance: 20000,
+      });
 
-      const result = await walletService.fundWallet(userId, { currency: 'NGN', amount: 30000 });
+      const result = await walletService.fundWallet(userId, {
+        currency: 'NGN',
+        amount: 30000,
+      });
 
       expect(result.new_balance).toBe('50000.000000');
     });
@@ -569,13 +622,20 @@ describe('FxService', () => {
       const rate = await fxService.getRate('NGN', 'USD');
 
       expect(fxRateRepo.save).toHaveBeenCalled();
-      expect(redisClient.set).toHaveBeenCalledWith('fx:NGN:USD', expect.any(String), 'EX', 300);
+      expect(redisClient.set).toHaveBeenCalledWith(
+        'fx:NGN:USD',
+        expect.any(String),
+        'EX',
+        300,
+      );
       expect(rate.rate).toBe(1650);
     });
 
     it('should fall back to last DB rate when external API is down', async () => {
       redisClient.get.mockResolvedValue(null);
-      httpService.get.mockReturnValue(throwError(() => new Error('API timeout')));
+      httpService.get.mockReturnValue(
+        throwError(() => new Error('API timeout')),
+      );
       fxRateRepo.findOne.mockResolvedValue({ id: 'old-uuid', rate: 1640 });
 
       const rate = await fxService.getRate('NGN', 'USD');
@@ -589,7 +649,7 @@ describe('FxService', () => {
       fxRateRepo.findOne.mockResolvedValue(null);
 
       await expect(fxService.getRate('NGN', 'USD')).rejects.toThrow(
-        ServiceUnavailableException
+        ServiceUnavailableException,
       );
     });
   });
@@ -603,23 +663,33 @@ describe('FxService', () => {
 describe('AuthService', () => {
   describe('verifyOtp', () => {
     it('should activate user and return JWT on valid OTP', async () => {
-      const user = { email: 'test@test.com', otp_code: '482910', is_verified: false };
+      const user = {
+        email: 'test@test.com',
+        otp_code: '482910',
+        is_verified: false,
+      };
       userRepo.findOne.mockResolvedValue(user);
       jwtService.sign.mockReturnValue('signed-token');
 
-      const result = await authService.verifyOtp({ email: 'test@test.com', otp: '482910' });
+      const result = await authService.verifyOtp({
+        email: 'test@test.com',
+        otp: '482910',
+      });
 
       expect(userRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ is_verified: true, otp_code: null })
+        expect.objectContaining({ is_verified: true, otp_code: null }),
       );
       expect(result.access_token).toBe('signed-token');
     });
 
     it('should throw 400 on incorrect OTP', async () => {
-      userRepo.findOne.mockResolvedValue({ otp_code: '111111', is_verified: false });
+      userRepo.findOne.mockResolvedValue({
+        otp_code: '111111',
+        is_verified: false,
+      });
 
       await expect(
-        authService.verifyOtp({ email: 'test@test.com', otp: '999999' })
+        authService.verifyOtp({ email: 'test@test.com', otp: '999999' }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -632,7 +702,7 @@ describe('AuthService', () => {
       });
 
       await expect(
-        authService.verifyOtp({ email: 'test@test.com', otp: '482910' })
+        authService.verifyOtp({ email: 'test@test.com', otp: '482910' }),
       ).rejects.toThrow('OTP has expired');
     });
   });
@@ -678,8 +748,8 @@ describe('POST /wallet/convert (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    const ngn = walletRes.body.balances.find(b => b.currency === 'NGN');
-    const usd = walletRes.body.balances.find(b => b.currency === 'USD');
+    const ngn = walletRes.body.balances.find((b) => b.currency === 'NGN');
+    const usd = walletRes.body.balances.find((b) => b.currency === 'USD');
 
     expect(Number(ngn.balance)).toBe(50000); // 100000 - 50000
     expect(Number(usd.balance)).toBeGreaterThan(0);
@@ -705,7 +775,7 @@ describe('POST /wallet/convert (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    const conversions = txRes.body.data.filter(t => t.type === 'CONVERT');
+    const conversions = txRes.body.data.filter((t) => t.type === 'CONVERT');
     expect(conversions.length).toBeGreaterThan(0);
     expect(conversions[0].rate_used).toBeDefined();
   });
@@ -744,7 +814,7 @@ describe('Concurrent trade requests (race condition)', () => {
       .get('/wallet')
       .set('Authorization', `Bearer ${token}`);
 
-    const ngn = walletRes.body.balances.find(b => b.currency === 'NGN');
+    const ngn = walletRes.body.balances.find((b) => b.currency === 'NGN');
     expect(Number(ngn.balance)).toBeGreaterThanOrEqual(0);
   });
 });
@@ -754,29 +824,29 @@ describe('Concurrent trade requests (race condition)', () => {
 
 ### Test Coverage Summary
 
-| Area | Type | What is tested |
-|------|------|----------------|
-| Wallet fund | Unit | New row creation, top-up of existing balance |
-| Wallet convert | Unit | Correct debit/credit math, insufficient balance |
-| Wallet convert | Integration | Full DB state after conversion, transaction record created |
-| Concurrency | Integration | Two simultaneous trades cannot double-spend |
-| FX rate cache | Unit | Redis hit skips API, miss fetches and persists |
-| FX rate fallback | Unit | Stale DB rate used when API is down, 503 when no rate exists |
-| OTP verify | Unit | Valid OTP activates user, expired OTP rejected, wrong OTP rejected |
-| Auth guard | Integration | Protected routes return 401 without token, 403 for unverified users |
+| Area             | Type        | What is tested                                                      |
+| ---------------- | ----------- | ------------------------------------------------------------------- |
+| Wallet fund      | Unit        | New row creation, top-up of existing balance                        |
+| Wallet convert   | Unit        | Correct debit/credit math, insufficient balance                     |
+| Wallet convert   | Integration | Full DB state after conversion, transaction record created          |
+| Concurrency      | Integration | Two simultaneous trades cannot double-spend                         |
+| FX rate cache    | Unit        | Redis hit skips API, miss fetches and persists                      |
+| FX rate fallback | Unit        | Stale DB rate used when API is down, 503 when no rate exists        |
+| OTP verify       | Unit        | Valid OTP activates user, expired OTP rejected, wrong OTP rejected  |
+| Auth guard       | Integration | Protected routes return 401 without token, 403 for unverified users |
 
 ---
 
 ## Supported Currencies
 
-| Code | Currency |
-|------|----------|
-| NGN  | Nigerian Naira |
-| USD  | US Dollar |
-| EUR  | Euro |
-| GBP  | British Pound |
-| GHS  | Ghanaian Cedi |
-| KES  | Kenyan Shilling |
+| Code | Currency           |
+| ---- | ------------------ |
+| NGN  | Nigerian Naira     |
+| USD  | US Dollar          |
+| EUR  | Euro               |
+| GBP  | British Pound      |
+| GHS  | Ghanaian Cedi      |
+| KES  | Kenyan Shilling    |
 | ZAR  | South African Rand |
 
 Additional currencies can be added by updating the `SUPPORTED_CURRENCIES` config array — no schema changes required.
@@ -805,12 +875,12 @@ WALLET_BALANCE ||--o{ TRANSACTION : "referenced in"
 FX_RATE        ||--o{ TRANSACTION : "used in"
 ```
 
-| Table | Role |
-|-------|------|
-| `USER` | Identity and authentication |
-| `WALLET_BALANCE` | One row per currency held per user |
-| `TRANSACTION` | Immutable ledger — every fund, convert, and trade |
-| `FX_RATE` | Audit log of every rate fetched from the external API |
+| Table            | Role                                                  |
+| ---------------- | ----------------------------------------------------- |
+| `USER`           | Identity and authentication                           |
+| `WALLET_BALANCE` | One row per currency held per user                    |
+| `TRANSACTION`    | Immutable ledger — every fund, convert, and trade     |
+| `FX_RATE`        | Audit log of every rate fetched from the external API |
 
 ---
 
@@ -836,12 +906,12 @@ transactions
 
 **Module responsibilities:**
 
-| Module | Owns |
-|--------|------|
-| `AuthModule` | Registration, OTP generation, email dispatch, JWT issuance |
-| `WalletModule` | Balance reads, funding, conversion, trading, row-level locking |
-| `FxModule` | Rate lookup (Redis → external API → DB fallback), rate persistence |
-| `TransactionModule` | Transaction history queries, pagination, filtering |
+| Module              | Owns                                                               |
+| ------------------- | ------------------------------------------------------------------ |
+| `AuthModule`        | Registration, OTP generation, email dispatch, JWT issuance         |
+| `WalletModule`      | Balance reads, funding, conversion, trading, row-level locking     |
+| `FxModule`          | Rate lookup (Redis → external API → DB fallback), rate persistence |
+| `TransactionModule` | Transaction history queries, pagination, filtering                 |
 
 ---
 
@@ -887,6 +957,7 @@ POST /wallet/convert
 ```
 
 **Key safety properties:**
+
 - The `SELECT ... FOR UPDATE` lock on step 4 ensures two concurrent trades on the same balance serialise correctly — preventing double-spending.
 - The entire debit + credit + log operation is a single atomic DB transaction. A failure at any step rolls the whole thing back — no partial state is ever committed.
 - The `fx_rate_id` FK on every transaction row creates a permanent, queryable audit trail of exactly which rate was applied to every trade.
@@ -929,10 +1000,23 @@ Two triggers:
 ```
 
 **Why write to both?**
+
 - **Redis** is the performance layer — rates are served in < 5ms, and the external API is called at most once per TTL window regardless of how many users trade simultaneously.
 - **PostgreSQL** is the audit layer — every `TRANSACTION` row carries an `fx_rate_id` FK, so the exact rate applied to any trade is permanently queryable. Redis can be wiped and rebuilt; the DB cannot.
 - **Fallback:** If the external API is down, `FxService` queries the most recent row in `fx_rate` for that pair and uses it rather than failing the user's trade.
 
-
-
 ⚠️ Important: TypeORM returns decimal columns as strings. Always use a library like decimal.js for arithmetic to avoid floating-point errors.
+Optional security improvement
+
+Limit OTP attempts (very common in fintech apps):
+
+Add fields like:
+
+@Column({ name: 'otp_attempts', default: 0 })
+otpAttempts: number;
+
+Then:
+
+increment attempts on failure
+
+lock after 5 tries
