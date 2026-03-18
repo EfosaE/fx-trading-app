@@ -12,33 +12,34 @@ services:
     volumes:
       - fx_trade_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fxtrade"]
+      test: [ "CMD-SHELL", "pg_isready -U fxtrade" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - fx-trade-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: fx-trade-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    ports:
-      - "6388:6379"
-    volumes:
-      - fx_trade_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - fx-trade-network
+  # FOR SIMPLICITY REDIS WAS NOT USED YET
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: fx-trade-redis
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes
+  #   ports:
+  #     - "6388:6379"
+  #   volumes:
+  #     - fx_trade_redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - fx-trade-network
 
 volumes:
   fx_trade_postgres_data:
-  fx_trade_redis_data:
+    # fx_trade_redis_data:
+
 
 networks:
   fx-trade-network:
