@@ -33,7 +33,7 @@ A NestJS backend for a multi-currency FX trading platform. Users can register, f
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/fx-trading-app.git
+git clone https://github.com/EfosaE/fx-trading-app.git
 cd fx-trading-app
 ```
 
